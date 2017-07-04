@@ -1,6 +1,6 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/activity_feedback1"
+    android:id="@+id/rlayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -15,15 +15,9 @@
     <SearchView
         android:id="@+id/search"
         android:layout_width="match_parent"
-        android:layout_height="30dp"
+        android:layout_height="45dp"
         android:layout_alignParentBottom="true"
         android:layout_alignParentStart="true"
         android:layout_margin="20dp"
         android:layout_marginStart="36dp" />
-
-    <ListView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_alignParentBottom="true"
-        android:layout_below="@id/map" />
 </RelativeLayout>

@@ -4,13 +4,6 @@ import android.graphics.Color;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.app.AlertDialog;
-import android.os.Handler;
-import android.os.SystemClock;
-import android.support.v7.widget.SearchView;
-import android.view.animation.AccelerateDecelerateInterpolator;
-import android.view.animation.Interpolator;
-import android.widget.ListView;
-
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
 import com.firebase.geofire.GeoQuery;
@@ -19,8 +12,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.FirebaseOptions;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
 
@@ -32,16 +24,14 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-import java.util.List;
 import java.util.Map;
 
-public class Landing extends FragmentActivity implements GeoQueryEventListener {
+public class Landing extends FragmentActivity implements GeoQueryEventListener, GoogleMap.OnCameraChangeListener {
 
-    private static final GeoLocation INITIAL_CENTER = new GeoLocation(40.7589, -73.9851);//(56.83069, 1.94822);
-    private static final int INITIAL_ZOOM_LEVEL = 14;
+    private static final GeoLocation INITIAL_CENTER = new GeoLocation(30.902225, -166.66809);
+    private static final int INITIAL_ZOOM_LEVEL = 13;
     private static final String GEO_FIRE_DB = "https://aroundu-18e5d.firebaseio.com";
-    private static final String GEO_FIRE_REF = GEO_FIRE_DB + "/-KnxyWkJziPBgDq3Akgk" +
-            " ";
+    private static final String GEO_FIRE_REF = GEO_FIRE_DB + "/-Ko3XGt099alUDgbsiCS";
 
     private GoogleMap map;
     private Circle searchCircle;
@@ -49,58 +39,41 @@ public class Landing extends FragmentActivity implements GeoQueryEventListener {
     private GeoQuery geoQuery;
     SupportMapFragment mapFragment;
 
+    double radius = 2;
     private Map<String, Marker> markers;
-    private ListView listView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        try {
-            super.onCreate(savedInstanceState);
-            //FirebaseDatabase.getInstance().setPersistenceEnabled(true);
-            setContentView(R.layout.activity_landing);
-            SearchView se = (SearchView) findViewById(R.id.search);
-            se.setBackgroundColor(Color.rgb(53, 53, 53));
-            // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_landing);
 
-            listView = (ListView) findViewById(R.id.map);
-
-            mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
-            mapFragment.getMapAsync(new OnMapReadyCallback() {
-                @Override
-                public void onMapReady(GoogleMap googleMap) {
-                    map = googleMap;
-                    some();
-                }
-            });
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
+        mapFragment.getMapAsync(new OnMapReadyCallback() {
+            @Override
+            public void onMapReady(GoogleMap googleMap) {
+                map = googleMap;
+                initialize();
+            }
+        });
     }
 
-    void some() {
-        try {
-            LatLng latLngCenter = new LatLng(INITIAL_CENTER.latitude, INITIAL_CENTER.longitude);
-            this.searchCircle = this.map.addCircle(new CircleOptions().center(latLngCenter).radius(1000));
-            this.searchCircle.setFillColor(Color.argb(66, 255, 0, 255));
-            this.searchCircle.setStrokeColor(Color.argb(66, 0, 0, 0));
-            this.map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLngCenter, INITIAL_ZOOM_LEVEL));
+    void initialize() {
+        LatLng latLngCenter = new LatLng(INITIAL_CENTER.latitude, INITIAL_CENTER.longitude);
+        this.searchCircle = this.map.addCircle(new CircleOptions().center(latLngCenter).radius(2000));
+        this.searchCircle.setFillColor(Color.argb(66, 255, 0, 255));
+        this.searchCircle.setStrokeColor(Color.argb(66, 0, 0, 0));
+        this.map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLngCenter, INITIAL_ZOOM_LEVEL));
+        this.map.setOnCameraChangeListener(this);
 
-            FirebaseOptions options = new FirebaseOptions.Builder().setApiKey("AIzaSyB0hqpv_NNDJ3vZSdH1_knV5bBYztiCIpY").setApplicationId("1:76997838740:android:14fa7cbc50e02afd").setDatabaseUrl(GEO_FIRE_DB).build();
-            FirebaseApp app = FirebaseApp.initializeApp(this, options, "fun.hye.aroundu");
+        // setup GeoFire
+        this.geoFire = new GeoFire(FirebaseDatabase.getInstance().getReferenceFromUrl(GEO_FIRE_REF));
 
-            // setup GeoFire
-            //this.geoFire = new GeoFire(FirebaseDatabase.getInstance(app).getReferenceFromUrl(GEO_FIRE_REF));
+        // radius in km
+        this.geoQuery = this.geoFire.queryAtLocation(INITIAL_CENTER, this.radius);
+        this.geoQuery.addGeoQueryEventListener(this);
 
-            // radius in km
-            //this.geoQuery = this.geoFire.queryAtLocation(INITIAL_CENTER, 1);
-
-            // setup markers
-            this.markers = new HashMap<>();
-            //this.geoQuery.addGeoQueryEventListener(this);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        // setup markers
+        this.markers = new HashMap<>();
     }
 
     @Override
@@ -112,13 +85,6 @@ public class Landing extends FragmentActivity implements GeoQueryEventListener {
             marker.remove();
         }
         this.markers.clear();
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        // add an event listener to start updating locations again
-
     }
 
     @Override
@@ -143,7 +109,7 @@ public class Landing extends FragmentActivity implements GeoQueryEventListener {
         // Move the marker
         Marker marker = this.markers.get(key);
         if (marker != null) {
-            this.animateMarkerTo(marker, location.latitude, location.longitude);
+            marker.setPosition(new LatLng(location.latitude, location.longitude));
         }
     }
 
@@ -161,29 +127,14 @@ public class Landing extends FragmentActivity implements GeoQueryEventListener {
                 .show();
     }
 
-    // Animation handler for old APIs without animation support
-    private void animateMarkerTo(final Marker marker, final double lat, final double lng) {
-        final Handler handler = new Handler();
-        final long start = SystemClock.uptimeMillis();
-        final long DURATION_MS = 3000;
-        final Interpolator interpolator = new AccelerateDecelerateInterpolator();
-        final LatLng startPosition = marker.getPosition();
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                float elapsed = SystemClock.uptimeMillis() - start;
-                float t = elapsed / DURATION_MS;
-                float v = interpolator.getInterpolation(t);
-
-                double currentLat = (lat - startPosition.latitude) * v + startPosition.latitude;
-                double currentLng = (lng - startPosition.longitude) * v + startPosition.longitude;
-                marker.setPosition(new LatLng(currentLat, currentLng));
-
-                // if animation is not finished yet, repeat
-                if (t < 1) {
-                    handler.postDelayed(this, 16);
-                }
-            }
-        });
+    @Override
+    public void onCameraChange(CameraPosition cameraPosition) {
+        // Update the search criteria for this geoQuery and the circle on the map
+        LatLng center = cameraPosition.target;
+        this.searchCircle.setCenter(center);
+        this.searchCircle.setRadius(2000);
+        this.geoQuery.setCenter(new GeoLocation(center.latitude, center.longitude));
+        // radius in km
+        this.geoQuery.setRadius(this.radius);
     }
 }
